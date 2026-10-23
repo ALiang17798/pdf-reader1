@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PDF 复习资料阅读器</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -21,7 +20,6 @@
       --text: #1E293B;
       --text-secondary: #64748B;
       --border: #E2E8F0;
-      --danger: #EF4444;
     }
 
     html, body { height: 100%; overflow: hidden; }
@@ -32,7 +30,6 @@
       display: flex;
     }
 
-    /* Sidebar */
     .sidebar {
       width: var(--sidebar-w);
       min-width: var(--sidebar-w);
@@ -59,7 +56,7 @@
     }
 
     .sidebar-header h1::before {
-      content: "📚";
+      content: "\1F4DA";
       font-size: 20px;
     }
 
@@ -89,10 +86,7 @@
     .pdf-tree::-webkit-scrollbar-track { background: transparent; }
     .pdf-tree::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 
-    /* Tree structure */
-    .tree-category {
-      margin-bottom: 4px;
-    }
+    .tree-category { margin-bottom: 4px; }
 
     .tree-category-title {
       display: flex;
@@ -161,7 +155,6 @@
     .tree-item:hover { background: var(--sidebar-hover); color: #F1F5F9; }
     .tree-item.active { background: var(--sidebar-active); color: #F1F5F9; }
 
-    /* Main content */
     .main {
       flex: 1;
       display: flex;
@@ -202,58 +195,13 @@
       text-overflow: ellipsis;
     }
 
-    .toolbar-controls {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-
-    .toolbar-controls button {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      transition: all 0.15s;
-    }
-    .toolbar-controls button:hover { background: var(--border); }
-
-    .page-info {
-      font-size: 13px;
-      color: var(--text-secondary);
-      min-width: 60px;
-      text-align: center;
-      white-space: nowrap;
-    }
-
-    /* Viewer */
-    .viewer {
+    .pdf-frame {
       flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .viewer canvas {
-      max-width: 100%;
-      height: auto;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-      border-radius: 4px;
+      width: 100%;
+      border: none;
       background: #fff;
     }
 
-    /* Empty state */
     .empty-state {
       flex: 1;
       display: flex;
@@ -287,27 +235,6 @@
       max-width: 320px;
     }
 
-    /* Loading */
-    .loading {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 40px;
-      color: var(--text-secondary);
-      font-size: 14px;
-      gap: 10px;
-    }
-    .spinner {
-      width: 20px;
-      height: 20px;
-      border: 2px solid var(--border);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* Backdrop for mobile */
     .backdrop {
       display: none;
       position: fixed;
@@ -317,7 +244,6 @@
     }
     .backdrop.active { display: block; }
 
-    /* Responsive */
     @media (max-width: 768px) {
       .sidebar {
         position: fixed;
@@ -328,9 +254,6 @@
       .sidebar.open { transform: translateX(0); }
       .menu-btn { display: flex; }
       .toolbar { padding: 10px 12px; }
-      .viewer { padding: 12px; }
-      .toolbar-controls button { width: 28px; height: 28px; font-size: 14px; }
-      .page-info { font-size: 12px; min-width: 50px; }
     }
   </style>
 </head>
@@ -357,19 +280,11 @@
         </svg>
       </button>
       <span class="toolbar-title" id="toolbarTitle">PDF 阅读器</span>
-      <div class="toolbar-controls" id="toolbarControls" style="display:none;">
-        <button id="prevPage" title="上一页">‹</button>
-        <span class="page-info" id="pageInfo">1 / 1</span>
-        <button id="nextPage" title="下一页">›</button>
-        <span style="width:1px;height:20px;background:var(--border);margin:0 4px;"></span>
-        <button id="zoomOut" title="缩小">−</button>
-        <button id="zoomIn" title="放大">+</button>
-      </div>
     </div>
 
-    <div class="viewer" id="viewer">
+    <div id="content" style="flex:1;display:flex;flex-direction:column;min-height:0;">
       <div class="empty-state" id="emptyState">
-        <div class="empty-icon">📄</div>
+        <div class="empty-icon">&#128196;</div>
         <h2>选择一份资料开始阅读</h2>
         <p>从左侧目录中选择 PDF 文件，即可开始阅读。支持翻页、缩放，手机端完美适配。</p>
       </div>
@@ -377,15 +292,12 @@
   </main>
 
   <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const GITHUB_BASE = 'https://cdn.jsdelivr.net/gh/ALiang17798/pdf-reader1@master/pdfs/';
 
-    const GITHUB_BASE = 'https://raw.githubusercontent.com/ALiang17798/pdf-reader1/main/pdfs/';
-
-    // PDF structure
     const pdfStructure = [
       {
         name: '押题三套卷-个人理财押题',
+        dir: '押题三套卷-个人理财押题',
         items: [
           { name: '第一套题目', file: '《个人理财》第一套 纯题目 .pdf' },
           { name: '第一套题目+答案', file: '《个人理财》第一套 题目＋解析.pdf' },
@@ -397,6 +309,7 @@
       },
       {
         name: '初级理财10月押题',
+        dir: '初级理财10月押题',
         children: [
           {
             name: '个人理财',
@@ -432,6 +345,7 @@
       },
       {
         name: '模考金题',
+        dir: '模考金题',
         items: [
           { name: '1、模考金题一（一）', file: '1、模考金题一（一）.pdf' },
           { name: '2、模考金题一（二）', file: '2、模考金题一（二）.pdf' },
@@ -445,6 +359,7 @@
       },
       {
         name: '教材精讲班 讲义',
+        dir: '教材精讲班 讲义',
         items: [
           { name: '课程导学', file: '课程导学.pdf' },
           { name: '1、个人理财及相关定义（一）', file: '1、个人理财及相关定义（一）.pdf' },
@@ -487,10 +402,6 @@
 
     const state = {
       currentFile: null,
-      currentDoc: null,
-      currentPage: 1,
-      totalPages: 1,
-      scale: 1.5,
       isMobile: window.innerWidth <= 768,
     };
 
@@ -499,49 +410,46 @@
       sidebar: $('sidebar'),
       backdrop: $('backdrop'),
       pdfTree: $('pdfTree'),
-      viewer: $('viewer'),
+      content: $('content'),
       emptyState: $('emptyState'),
       toolbarTitle: $('toolbarTitle'),
-      toolbarControls: $('toolbarControls'),
-      pageInfo: $('pageInfo'),
       searchInput: $('searchInput'),
     };
 
-    // Build tree
     function buildTree() {
       el.pdfTree.innerHTML = '';
       const query = el.searchInput.value.trim().toLowerCase();
 
-      pdfStructure.forEach((category, ci) => {
+      pdfStructure.forEach((category) => {
         const catDiv = document.createElement('div');
         catDiv.className = 'tree-category';
 
         const title = document.createElement('div');
         title.className = 'tree-category-title expanded';
-        title.innerHTML = `<span class="arrow">▶</span>${category.name}`;
+        title.innerHTML = '<span class="arrow">&#9654;</span>' + category.name;
 
         const itemsContainer = document.createElement('div');
         itemsContainer.className = 'tree-items';
 
         if (category.children) {
-          category.children.forEach((subcat, si) => {
+          category.children.forEach((subcat) => {
             const subDiv = document.createElement('div');
             subDiv.className = 'tree-subcategory';
 
             const subTitle = document.createElement('div');
             subTitle.className = 'tree-subcategory-title expanded';
-            subTitle.innerHTML = `<span class="arrow">▶</span>${subcat.name}`;
+            subTitle.innerHTML = '<span class="arrow">&#9654;</span>' + subcat.name;
 
             const subItems = document.createElement('div');
             subItems.className = 'tree-items';
 
-            subcat.items.forEach((item, ii) => {
+            subcat.items.forEach((item) => {
               if (query && !item.name.toLowerCase().includes(query) && !subcat.name.toLowerCase().includes(query)) return;
               const itemDiv = document.createElement('div');
               itemDiv.className = 'tree-item';
               itemDiv.textContent = item.name;
               itemDiv.dataset.file = item.file;
-              itemDiv.addEventListener('click', () => selectPDF(item.file, item.name));
+              itemDiv.addEventListener('click', () => selectPDF(item.file, item.name, category.dir));
               subItems.appendChild(itemDiv);
             });
 
@@ -560,7 +468,7 @@
             itemDiv.className = 'tree-item';
             itemDiv.textContent = item.name;
             itemDiv.dataset.file = item.file;
-            itemDiv.addEventListener('click', () => selectPDF(item.file, item.name));
+            itemDiv.addEventListener('click', () => selectPDF(item.file, item.name, category.dir));
             itemsContainer.appendChild(itemDiv);
           });
         }
@@ -575,150 +483,41 @@
       });
     }
 
-    // PDF Viewer
-    async function selectPDF(file, name) {
+    function selectPDF(file, name, dir) {
       if (state.currentFile === file) return;
-
       state.currentFile = file;
-      el.toolbarTitle.textContent = name;
-      el.toolbarControls.style.display = 'flex';
-      el.emptyState.style.display = 'none';
 
-      // Update active state
+      el.toolbarTitle.textContent = name;
+
       document.querySelectorAll('.tree-item').forEach(item => {
         item.classList.toggle('active', item.dataset.file === file);
       });
 
-      el.viewer.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
+      const path = dir ? dir + '/' + file : file;
+      const url = GITHUB_BASE + encodeURIComponent(path);
 
-      try {
-        const url = GITHUB_BASE + encodeURIComponent(file);
-        state.currentDoc = await pdfjsLib.getDocument(url).promise;
-        state.totalPages = state.currentDoc.numPages;
-        state.currentPage = 1;
-        state.scale = 1.5;
+      el.content.innerHTML = '';
+      const iframe = document.createElement('iframe');
+      iframe.className = 'pdf-frame';
+      iframe.src = url;
+      iframe.setAttribute('allowfullscreen', '');
+      el.content.appendChild(iframe);
 
-        await renderAllPages();
-        updatePageInfo();
-
-        if (state.isMobile) closeSidebar();
-      } catch (err) {
-        console.error('Failed to load PDF:', err);
-        el.viewer.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h2>加载失败</h2><p>无法打开此 PDF 文件，请检查网络后重试。</p></div>`;
-      }
+      if (state.isMobile) closeSidebar();
     }
 
-    async function renderAllPages() {
-      el.viewer.innerHTML = '';
-      const maxScale = Math.min(state.scale, 3);
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-      for (let i = 1; i <= state.totalPages; i++) {
-        const wrapper = document.createElement('div');
-        wrapper.dataset.page = i;
-        wrapper.style.position = 'relative';
-        el.viewer.appendChild(wrapper);
-
-        try {
-          const page = await state.currentDoc.getPage(i);
-          const viewport = page.getViewport({ scale: maxScale * dpr });
-
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.style.width = (viewport.width / dpr) + 'px';
-          canvas.style.height = (viewport.height / dpr) + 'px';
-          canvas.style.maxWidth = '100%';
-          canvas.style.height = 'auto';
-
-          const ctx = canvas.getContext('2d');
-          await page.render({ canvasContext: ctx, viewport }).promise;
-
-          wrapper.appendChild(canvas);
-        } catch (err) {
-          wrapper.innerHTML = `<div style="padding:20px;color:var(--text-secondary);text-align:center;">第 ${i} 页渲染失败</div>`;
-        }
-      }
-    }
-
-    function updatePageInfo() {
-      el.pageInfo.textContent = `${state.currentPage} / ${state.totalPages}`;
-    }
-
-    // Scroll tracking
-    function setupScrollTracking() {
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const page = parseInt(entry.target.dataset.page);
-            if (page && page !== state.currentPage) {
-              state.currentPage = page;
-              updatePageInfo();
-            }
-          }
-        });
-      }, { root: el.viewer, threshold: 0.3 });
-
-      el.viewer.querySelectorAll('[data-page]').forEach(p => observer.observe(p));
-    }
-
-    // Controls
-    $('prevPage').addEventListener('click', () => {
-      if (state.currentPage > 1) {
-        state.currentPage--;
-        const target = el.viewer.querySelector(`[data-page="${state.currentPage}"]`);
-        if (target) target.scrollIntoView({ behavior: 'smooth' });
-        updatePageInfo();
-      }
-    });
-
-    $('nextPage').addEventListener('click', () => {
-      if (state.currentPage < state.totalPages) {
-        state.currentPage++;
-        const target = el.viewer.querySelector(`[data-page="${state.currentPage}"]`);
-        if (target) target.scrollIntoView({ behavior: 'smooth' });
-        updatePageInfo();
-      }
-    });
-
-    $('zoomIn').addEventListener('click', async () => {
-      if (state.scale >= 3) return;
-      state.scale = Math.min(state.scale + 0.25, 3);
-      if (state.currentDoc) { await renderAllPages(); setupScrollTracking(); }
-    });
-
-    $('zoomOut').addEventListener('click', async () => {
-      if (state.scale <= 0.75) return;
-      state.scale = Math.max(state.scale - 0.25, 0.75);
-      if (state.currentDoc) { await renderAllPages(); setupScrollTracking(); }
-    });
-
-    // Sidebar toggle
     function openSidebar() { el.sidebar.classList.add('open'); el.backdrop.classList.add('active'); }
     function closeSidebar() { el.sidebar.classList.remove('open'); el.backdrop.classList.remove('active'); }
 
     $('menuBtn').addEventListener('click', openSidebar);
     el.backdrop.addEventListener('click', closeSidebar);
-
-    // Search
     el.searchInput.addEventListener('input', buildTree);
 
-    // Keyboard
-    document.addEventListener('keydown', (e) => {
-      if (!state.currentDoc) return;
-      if (e.target.tagName === 'INPUT') return;
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); $('prevPage').click(); }
-      else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); $('nextPage').click(); }
-      else if (e.key === '+' || e.key === '=') { e.preventDefault(); $('zoomIn').click(); }
-      else if (e.key === '-') { e.preventDefault(); $('zoomOut').click(); }
-    });
-
-    // Responsive
     window.addEventListener('resize', () => {
       state.isMobile = window.innerWidth <= 768;
       if (!state.isMobile) closeSidebar();
     });
 
-    // Init
     buildTree();
   </script>
 </body>
