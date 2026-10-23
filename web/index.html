@@ -494,7 +494,8 @@
       });
 
       const path = dir ? dir + '/' + file : file;
-      const url = GITHUB_BASE + encodeURIComponent(path);
+      const encodedPath = path.split('/').map(segment => encodeURIComponent(segment)).join('/');
+      const url = GITHUB_BASE + encodedPath;
 
       el.content.innerHTML = '';
       const iframe = document.createElement('iframe');
