@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PDF 复习资料阅读器</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -293,6 +294,7 @@
 
   <script>
     const GITHUB_BASE = 'https://aliang17798.github.io/pdf-reader1/pdfs/';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
     const pdfStructure = [
       {
@@ -498,11 +500,36 @@
       const url = GITHUB_BASE + encodedPath;
 
       el.content.innerHTML = '';
-      const iframe = document.createElement('iframe');
-      iframe.className = 'pdf-frame';
-      iframe.src = url;
-      iframe.setAttribute('allowfullscreen', '');
-      el.content.appendChild(iframe);
+      const container = document.createElement('div');
+      container.className = 'pdf-container';
+      container.style.cssText = 'flex:1;overflow:auto;background:#525659;padding:10px;';
+      el.content.appendChild(container);
+
+      const loadingDiv = document.createElement('div');
+      loadingDiv.textContent = '加载中...';
+      loadingDiv.style.cssText = 'color:#fff;text-align:center;padding:40px;';
+      container.appendChild(loadingDiv);
+
+      pdfjsLib.getDocument(url).promise.then(pdf => {
+        loadingDiv.remove();
+        let pageNum = 1;
+        const renderPage = (num) => {
+          pdf.getPage(num).then(page => {
+            const viewport = page.getViewport({ scale: 1.5 });
+            const canvas = document.createElement('canvas');
+            canvas.style.cssText = 'display:block;margin:10px auto;box-shadow:0 2px 8px rgba(0,0,0,0.3);max-width:100%;';
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            container.appendChild(canvas);
+            page.render({ canvasContext: context, viewport: viewport });
+            if (num < pdf.numPages) renderPage(num + 1);
+          });
+        };
+        renderPage(pageNum);
+      }).catch(err => {
+        loadingDiv.textContent = 'PDF 加载失败：' + err.message;
+      });
 
       if (state.isMobile) closeSidebar();
     }
